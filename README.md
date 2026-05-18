@@ -17,6 +17,7 @@ A Craft CMS plugin that crawls all live entries across all sites and verifies th
 - [Running the check](#running-the-check)
 - [Results file structure](#results-file-structure)
 - [Interpreting results](#interpreting-results)
+- [Roadmap](#roadmap)
 
 The primary interface is the Craft CP: **Utilities → Link Checker**. From there you can run a check, monitor progress, stop a running check, browse results (broken link, HTTP status, source entry with View and Edit links, site name), and export results to CSV. Results are persisted to `storage/craft-link-checker/results.json` so they survive page reloads.
 
@@ -164,3 +165,7 @@ Only broken/problematic links (3xx, 4xx, 5xx, connection errors) are stored in `
 | Error | Connection failed | DNS failure, timeout, or TLS error. Host may be down or URL invalid. |
 
 302 and 400 are not always real problems. Always verify manually before editing content.
+
+## Roadmap
+
+- **Scan disabled entries** — optionally check links in entries that are not live, so broken links can be caught before content is published.
