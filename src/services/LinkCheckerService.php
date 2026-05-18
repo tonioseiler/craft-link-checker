@@ -96,7 +96,6 @@ class LinkCheckerService extends Component
         $client = new Client([
             'timeout' => 15,
             'connect_timeout' => 8,
-            'verify' => false,
             'headers' => ['User-Agent' => 'CraftLinkChecker/1.0'],
             'http_errors' => false,
         ]);
