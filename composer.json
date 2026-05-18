@@ -1,0 +1,59 @@
+{
+    "name": "furbo/craft-link-checker",
+    "version": "1.0.0",
+    "description": "Link checker utility for Craft CMS",
+    "type": "craft-plugin",
+    "keywords": [
+        "cms",
+        "craftcms",
+        "link-checker"
+    ],
+    "require": {
+        "php": "^8.1",
+        "craftcms/cms": "^4.16.14 || ^5.0.0"
+    },
+    "require-dev": {
+        "craftcms/ecs": "dev-main"
+    },
+    "autoload": {
+        "psr-4": {
+            "furbo\\craftlinkchecker\\": "src/"
+        }
+    },
+    "extra": {
+        "handle": "craft-link-checker",
+        "name": "Craft Link Checker",
+        "developer": "Furbo GmbH",
+        "documentationUrl": "https://github.com/tonioseiler/craft-link-checker/blob/main/README.md",
+        "class": "furbo\\craftlinkchecker\\CraftLinkChecker",
+        "schemaVersion": "1.0.0"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Furbo GmbH",
+            "homepage": "https://furbo.ch/"
+        }
+    ],
+    "support": {
+        "email": "support@furbo.ch",
+        "issues": "https://github.com/tonioseiler/craft-link-checker/issues?state=open",
+        "source": "https://github.com/tonioseiler/craft-link-checker",
+        "docs": "https://github.com/tonioseiler/craft-link-checker/blob/main/README.md"
+    },
+    "scripts": {
+        "check-cs": "ecs check --ansi",
+        "fix-cs": "ecs check --ansi --fix",
+        "phpstan": "phpstan --memory-limit=1G"
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.2"
+        },
+        "allow-plugins": {
+            "yiisoft/yii2-composer": true,
+            "craftcms/plugin-installer": true
+        }
+    }
+}

@@ -1,0 +1,251 @@
+{% set csrfName = craft.app.config.general.csrfTokenName %}
+{% set csrfToken = craft.app.request.getCsrfToken() %}
+{% set runUrl = url('actions/craft-link-checker/link-checker/run') %}
+{% set stopUrl = url('actions/craft-link-checker/link-checker/stop') %}
+{% set resultsUrl = url('actions/craft-link-checker/link-checker/results') %}
+
+<div id="craft-link-checker">
+
+    {# ── Top bar ───────────────────────────────────────────────── #}
+    <div style="display:flex; align-items:center; gap:16px; margin-bottom:24px; flex-wrap:wrap;">
+        <button id="lc-run-btn" class="btn submit" type="button">Run Link Check</button>
+        <button id="lc-export-btn" class="btn" type="button" style="display:none;">Export as CSV</button>
+        <button id="lc-stop-btn" class="btn" type="button" style="display:none;">Stop</button>
+        <span id="lc-spinner" class="spinner" style="float:none; display:none;"></span>
+        <span id="lc-progress" style="font-size:13px; display:none;"></span>
+        <span id="lc-interrupted" style="color:#cf1124; font-size:13px; display:none;">
+            Check was interrupted. Run again to restart.
+        </span>
+        <span id="lc-meta" style="color:#8f98a3; font-size:13px; display:none;"></span>
+    </div>
+
+    {# ── Results ───────────────────────────────────────────────── #}
+    <div id="lc-results"></div>
+
+</div>
+
+<script>
+(function () {
+    var CSRF_NAME  = {{ csrfName | json_encode | raw }};
+    var CSRF_TOKEN = {{ csrfToken | json_encode | raw }};
+    var RUN_URL     = {{ runUrl | json_encode | raw }};
+    var STOP_URL    = {{ stopUrl | json_encode | raw }};
+    var RESULTS_URL = {{ resultsUrl | json_encode | raw }};
+
+    var pollTimer  = null;
+    var currentRows = [];
+    var initialData = {{ initialData | json_encode | raw }};
+
+    var btn         = document.getElementById('lc-run-btn');
+    var exportBtn   = document.getElementById('lc-export-btn');
+    var stopBtn     = document.getElementById('lc-stop-btn');
+    var spinner     = document.getElementById('lc-spinner');
+    var progress    = document.getElementById('lc-progress');
+    var interrupted = document.getElementById('lc-interrupted');
+    var meta        = document.getElementById('lc-meta');
+    var results     = document.getElementById('lc-results');
+
+    function render(data) {
+        var running = data.status === 'running';
+        var stale   = running && isStale(data.lastCheckpoint);
+
+        btn.disabled          = running && !stale;
+        stopBtn.style.display = (running && !stale) ? '' : 'none';
+        spinner.style.display = (running && !stale) ? '' : 'none';
+        interrupted.style.display = stale ? '' : 'none';
+
+        var rows = data.results || [];
+        var showExport = (data.status === 'complete' || data.status === 'stopped') && rows.length > 0;
+        exportBtn.style.display = showExport ? '' : 'none';
+
+        if (running && !stale) {
+            if (data.pagesTotal > 0) {
+                var pct = Math.round(data.pagesChecked / data.pagesTotal * 100);
+                progress.textContent = pct + '% — Entries: ' + data.pagesChecked + '/' + data.pagesTotal + ' — Broken links: ' + (data.brokenCount || 0);
+            } else {
+                progress.textContent = 'Starting…';
+            }
+            progress.style.display = '';
+        } else {
+            progress.style.display = 'none';
+        }
+
+        if (data.lastRun) {
+            meta.style.display = '';
+            meta.textContent = 'Last check: ' + new Date(data.lastRun).toLocaleString()
+                + ' — ' + (data.pagesChecked || 0) + ' entries, '
+                + (data.linksChecked || 0) + ' links checked';
+        }
+
+        renderResults(data);
+    }
+
+    function isStale(lastCheckpoint) {
+        if (!lastCheckpoint) return true;
+        return (Date.now() - new Date(lastCheckpoint).getTime()) > 90000;
+    }
+
+    function renderResults(data) {
+        var rows = data.results || [];
+        currentRows = rows;
+
+        if (data.status === 'idle') {
+            results.innerHTML = '<p style="color:#8f98a3;">No check has been run yet.</p>';
+            return;
+        }
+
+        if (data.status === 'running') {
+            results.innerHTML = '';
+            return;
+        }
+
+        if ((data.status === 'complete' || data.status === 'stopped') && rows.length === 0) {
+            var msg = data.status === 'stopped' ? 'Check stopped. No issues found in checked pages.' : 'All links are working. No issues found.';
+            results.innerHTML = '<p style="color:#1a6634;">' + msg + '</p>';
+            return;
+        }
+
+        if (rows.length === 0) {
+            results.innerHTML = '';
+            return;
+        }
+
+        var html = '<p style="font-weight:600; margin-bottom:16px;">' + rows.length + ' broken links found</p>';
+
+        html += '<table class="data fullwidth">';
+        html += '<thead><tr>'
+            + '<th style="width:40%;">Broken link</th>'
+            + '<th style="width:8%;">Status</th>'
+            + '<th style="width:8%;">Type</th>'
+            + '<th>Found on entry</th>'
+            + '<th style="width:8%;">Site</th>'
+            + '</tr></thead><tbody>';
+
+        rows.forEach(function (row) {
+            var statusBadge = '';
+            if (row.httpStatus) {
+                var code = row.httpStatus;
+                var style = 'border-radius:3px; padding:2px 7px; font-size:12px; font-weight:600;';
+                if (code >= 400) style += 'background:#fff0ef; color:#cf1124;';
+                else if (code >= 300) style += 'background:#fff8e0; color:#8c6800;';
+                else style += 'background:#dff0e8; color:#1a6634;';
+                statusBadge = '<span style="' + style + '">' + code + '</span>';
+            } else {
+                statusBadge = '<span style="font-size:12px; color:#8f98a3;" title="' + esc(row.error || '') + '">Error</span>';
+            }
+
+            html += '<tr>'
+                + '<td style="word-break:break-all; font-size:13px;"><a href="' + esc(row.linkUrl) + '" target="_blank">' + esc(row.linkUrl) + '</a></td>'
+                + '<td>' + statusBadge + '</td>'
+                + '<td><span style="font-size:12px;">' + esc(row.linkType) + '</span></td>'
+                + '<td>'
+                +   '<span style="font-weight:500;">' + esc(row.sourceTitle) + '</span><br>'
+                +   (row.sourcePage ? '<a href="' + esc(row.sourcePage) + '" target="_blank">View</a> &nbsp; ' : '')
+                +   '<a href="' + esc(row.cpEditUrl) + '">Edit</a>'
+                + '</td>'
+                + '<td><span style="background:#e3ecf5; border-radius:3px; padding:2px 7px; font-size:12px;">' + esc(row.sourceSiteName || row.sourceSite) + '</span></td>'
+                + '</tr>';
+        });
+
+        html += '</tbody></table>';
+        results.innerHTML = html;
+    }
+
+    function csvCell(val) {
+        var s = String(val == null ? '' : val).replace(/"/g, '""');
+        return /[",\r\n]/.test(s) ? '"' + s + '"' : s;
+    }
+
+    function esc(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    exportBtn.addEventListener('click', function () {
+        var today = new Date().toISOString().slice(0, 10);
+        var csv = 'Broken link,Status,Type,Source title,Source page,Site\r\n';
+        currentRows.forEach(function (row) {
+            csv += [
+                csvCell(row.linkUrl),
+                csvCell(row.httpStatus || row.error || ''),
+                csvCell(row.linkType),
+                csvCell(row.sourceTitle),
+                csvCell(row.sourcePage),
+                csvCell(row.sourceSiteName || row.sourceSite),
+            ].join(',') + '\r\n';
+        });
+        var blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'Craft-broken-links-' + today + '.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+    });
+
+    function startPolling() {
+        clearInterval(pollTimer);
+        pollTimer = setInterval(function () {
+            fetch(RESULTS_URL, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    render(data);
+                    if (data.status === 'complete' || data.status === 'stopped' || isStale(data.lastCheckpoint)) {
+                        clearInterval(pollTimer);
+                    }
+                })
+                .catch(function () { clearInterval(pollTimer); });
+        }, 4000);
+    }
+
+    btn.addEventListener('click', function () {
+        var body = new URLSearchParams();
+        body.append(CSRF_NAME, CSRF_TOKEN);
+
+        btn.disabled            = true;
+        exportBtn.style.display = 'none';
+        stopBtn.style.display   = '';
+        stopBtn.disabled        = false;
+        stopBtn.textContent     = 'Stop';
+        spinner.style.display   = '';
+        interrupted.style.display = 'none';
+        progress.style.display  = 'none';
+        results.innerHTML       = '';
+
+        fetch(RUN_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+            body: body,
+        })
+        .then(function () {
+            Craft.sendActionRequest('POST', 'queue/run').catch(function () {});
+            startPolling();
+        })
+        .catch(function (e) {
+            btn.disabled = false;
+            spinner.style.display = 'none';
+            console.error('Link checker error', e);
+        });
+    });
+
+    stopBtn.addEventListener('click', function () {
+        var body = new URLSearchParams();
+        body.append(CSRF_NAME, CSRF_TOKEN);
+        stopBtn.disabled    = true;
+        stopBtn.textContent = 'Stopping…';
+        fetch(STOP_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest' },
+            body: body,
+        }).catch(function () {});
+    });
+
+    // Boot
+    render(initialData);
+    if (initialData.status === 'running' && !isStale(initialData.lastCheckpoint)) {
+        startPolling();
+    }
+}());
+</script>

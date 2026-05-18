@@ -1,0 +1,19 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textareaField({
+    label: 'Skipped Hosts',
+    instructions: 'One hostname per line. Links to these hosts will not be checked.',
+    id: 'skippedHosts',
+    name: 'skippedHosts',
+    value: settings.skippedHosts,
+    rows: 10,
+}) }}
+
+{{ forms.textareaField({
+    label: 'Skipped Path Prefixes',
+    instructions: 'One URL path prefix per line. Links whose path starts with any of these will not be checked.',
+    id: 'skippedPathPrefixes',
+    name: 'skippedPathPrefixes',
+    value: settings.skippedPathPrefixes,
+    rows: 4,
+}) }}
