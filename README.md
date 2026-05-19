@@ -102,7 +102,6 @@ php craft queue/run
 **From the CLI:** useful for scheduled runs or when there is no browser access.
 
 
-TODO Paolo: is this correct?
 ```bash
 php craft craft-link-checker/link-checker/run
 ```
