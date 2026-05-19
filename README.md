@@ -47,7 +47,7 @@ cd /path/to/my-project
 composer require furbo/craft-link-checker
 
 # tell Craft to install the plugin
-./craft install/plugin craft-link-checker
+./craft plugin/install craft-link-checker
 ```
 
 
