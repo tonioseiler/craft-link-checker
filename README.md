@@ -36,29 +36,20 @@ External links are still verified over HTTP, since that is the only way to know 
 
 ## Installation
 
-This is a local path plugin. Add it to your project's `composer.json`:
+You can install this plugin from the Plugin Store or with Composer.
 
-```json
-"repositories": [
-    {
-        "type": "path",
-        "url": "plugins/craft-link-checker",
-        "options": { "symlink": true }
-    }
-]
-```
+With Composer
+```aiignore
+# go to the project directory
+cd /path/to/my-project
 
-Then run:
-
-```bash
+# tell Composer to load the plugin
 composer require furbo/craft-link-checker
+
+# tell Craft to install the plugin
+./craft install/plugin craft-link-checker
 ```
 
-Install the plugin in the Craft CP under **Settings → Plugins**, or via CLI:
-
-```bash
-php craft plugin/install craft-link-checker
-```
 
 ## How it works
 

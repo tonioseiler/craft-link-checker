@@ -110,20 +110,21 @@ class LinkCheckerService extends Component
             }
         }
 
-        // Auto-derive sections with no URL format (Craft 4 only — sections service removed in Craft 5)
+        // Auto-derive sections with no URL format (API differs between Craft 4 and 5)
         $urllessSectionHandles = [];
-        if (version_compare(Craft::$app->version, '5.0.0', '<')) {
-            foreach (Craft::$app->sections->getAllSections() as $section) {
-                $hasUrls = false;
-                foreach ($section->getSiteSettings() as $siteSettings) {
-                    if ($siteSettings->hasUrls) {
-                        $hasUrls = true;
-                        break;
-                    }
+        $allSections = version_compare(Craft::$app->version, '5.0.0', '<')
+            ? Craft::$app->sections->getAllSections()
+            : Craft::$app->getEntries()->getAllSections();
+        foreach ($allSections as $section) {
+            $hasUrls = false;
+            foreach ($section->getSiteSettings() as $siteSettings) {
+                if ($siteSettings->hasUrls) {
+                    $hasUrls = true;
+                    break;
                 }
-                if (!$hasUrls) {
-                    $urllessSectionHandles[] = $section->handle;
-                }
+            }
+            if (!$hasUrls) {
+                $urllessSectionHandles[] = $section->handle;
             }
         }
 
@@ -163,6 +164,8 @@ class LinkCheckerService extends Component
         $results = [];
         $linksFound = 0;
         $processed = 0;
+        $pass1Count = 0;
+        $pass2Count = 0;
 
         foreach ($sites as $site) {
             $query = Entry::find()->siteId($site->id)->status('live')->uri(':notempty:');
@@ -178,6 +181,7 @@ class LinkCheckerService extends Component
                 }
 
                 $processed++;
+                $pass1Count++;
                 if ($progressCallback) {
                     $progressCallback($processed, $total);
                 }
@@ -209,6 +213,9 @@ class LinkCheckerService extends Component
                         'lastCheckpoint' => date('c'),
                         'pagesChecked' => $processed,
                         'pagesTotal' => $total,
+                        'pass1Count' => $pass1Count,
+                        'pass2Count' => $pass2Count,
+                        'urllessSections' => $urllessSectionHandles,
                         'linksFound' => $linksFound,
                         'linksChecked' => count($checkedUrls),
                         'brokenCount' => count($results),
@@ -233,6 +240,7 @@ class LinkCheckerService extends Component
                         }
 
                         $processed++;
+                        $pass2Count++;
                         if ($progressCallback) {
                             $progressCallback($processed, $total);
                         }
@@ -265,6 +273,9 @@ class LinkCheckerService extends Component
                                 'lastCheckpoint' => date('c'),
                                 'pagesChecked' => $processed,
                                 'pagesTotal' => $total,
+                                'pass1Count' => $pass1Count,
+                                'pass2Count' => $pass2Count,
+                                'urllessSections' => $urllessSectionHandles,
                                 'linksFound' => $linksFound,
                                 'linksChecked' => count($checkedUrls),
                                 'brokenCount' => count($results),
@@ -284,6 +295,9 @@ class LinkCheckerService extends Component
             'lastRun' => date('c'),
             'pagesChecked' => $processed,
             'pagesTotal' => $total,
+            'pass1Count' => $pass1Count,
+            'pass2Count' => $pass2Count,
+            'urllessSections' => $urllessSectionHandles,
             'linksFound' => $linksFound,
             'linksChecked' => count($checkedUrls),
             'brokenCount' => count($results),
@@ -423,7 +437,21 @@ class LinkCheckerService extends Component
             return $links;
         }
 
-        // URL field (value may be a string or a stringable object in Craft 5)
+        // Link field — introduced in Craft 5, supersedes the Url field.
+        // On Craft 4 the class does not exist; instanceof safely returns false.
+        if ($field instanceof \craft\fields\Link) {
+            $url = $value instanceof \craft\fields\data\LinkData ? $value->getUrl() : '';
+            if ($url !== '') {
+                $normalized = $this->normalizeUrl($url, 'https', '', '/');
+                if ($normalized) {
+                    $links[] = $normalized;
+                }
+            }
+            return $links;
+        }
+
+        // Url field — the original plain-URL field present in Craft 3/4 and kept in Craft 5
+        // but deprecated since 5.3.0. Existing fields of this type still work in Craft 5.
         if ($field instanceof \craft\fields\Url) {
             $url = (string) $value;
             if ($url !== '') {

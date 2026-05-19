@@ -19,6 +19,9 @@
         <span id="lc-meta" style="color:#8f98a3; font-size:13px; display:none;"></span>
     </div>
 
+    {# ── Debug ────────────────────────────────────────────────── #}
+    <div id="lc-debug" style="display:none; margin-bottom:24px; padding:12px 16px; background:#f3f7fb; border:1px solid #c8d7e4; border-radius:4px; font-size:12px; font-family:monospace; line-height:1.8;"></div>
+
     {# ── Results ───────────────────────────────────────────────── #}
     <div id="lc-results"></div>
 
@@ -43,6 +46,7 @@
     var progress    = document.getElementById('lc-progress');
     var interrupted = document.getElementById('lc-interrupted');
     var meta        = document.getElementById('lc-meta');
+    var debug       = document.getElementById('lc-debug');
     var results     = document.getElementById('lc-results');
 
     function render(data) {
@@ -74,11 +78,32 @@
             meta.style.display = '';
             meta.textContent = 'Last check: ' + new Date(data.lastRun).toLocaleString()
                 + ' — ' + (data.pagesChecked || 0) + ' entries, '
-                + (data.linksChecked || 0) + ' links checked';
+                + (data.linksChecked || 0) + ' unique links checked';
         }
 
         renderResults(data);
+        // renderDebug(data);
     }
+
+    /* renderDebug — uncomment the call above to re-enable
+    function renderDebug(data) {
+        if (data.status === 'idle') {
+            debug.style.display = 'none';
+            return;
+        }
+        var sections = (data.urllessSections || []);
+        var lines = [
+            '<strong>Debug</strong>',
+            'Pass 1 (with URL): ' + (data.pass1Count != null ? data.pass1Count : '—') + ' entries',
+            'Pass 2 (URL-less): ' + (data.pass2Count != null ? data.pass2Count : '—') + ' entries',
+            'URL-less sections detected: ' + (sections.length ? sections.join(', ') : 'none'),
+            'Total entries: ' + (data.pagesChecked || 0) + ' / ' + (data.pagesTotal || 0),
+            'Links found: ' + (data.linksFound || 0) + ' &nbsp;|&nbsp; Links checked (unique): ' + (data.linksChecked || 0),
+        ];
+        debug.innerHTML = lines.join('<br>');
+        debug.style.display = '';
+    }
+    */
 
     function isStale(lastCheckpoint) {
         if (!lastCheckpoint) return true;
