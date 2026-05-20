@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.1 - 2026-05-20
+
+### Fixed
+- Asset links (PDFs and other files hosted on the same site) are now verified via HTTP instead of being incorrectly reported as 404
+
+### Added
+- SSL verification is skipped for internal asset requests on non-production environments (`CRAFT_ENVIRONMENT !== 'production'`)
+
 ## 1.0.0 - 2026-05-19
 
 ### Added

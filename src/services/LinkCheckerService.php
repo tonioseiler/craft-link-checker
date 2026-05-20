@@ -341,9 +341,17 @@ class LinkCheckerService extends Component
                         }
                     }
 
-                    if ($isPrivateInternal) {
-                        $exists = isset($knownLiveUrls[rtrim($linkUrl, '/')]);
-                        $check = ['status' => $exists ? 200 : 404, 'error' => null];
+                    if ($isPrivateInternal && isset($knownLiveUrls[rtrim($linkUrl, '/')])) {
+                        // Known live entry — no HTTP request needed
+                        $check = ['status' => 200, 'error' => null];
+                    } elseif ($isPrivateInternal) {
+                        // URL is on this site but not a known entry (e.g. an asset/PDF) — verify via HTTP.
+                        // SSL verification is disabled on non-production environments, which often use self-signed certs.
+                        $verifySsl = (getenv('CRAFT_ENVIRONMENT') === 'production');
+                        if ($verboseCallback) {
+                            $verboseCallback('check', "  → {$linkUrl}");
+                        }
+                        $check = $this->checkUrl($linkUrl, $client, verifySsl: $verifySsl);
                     } else {
                         if ($verboseCallback) {
                             $verboseCallback('check', "  → {$linkUrl}");
@@ -625,24 +633,21 @@ class LinkCheckerService extends Component
         return $encoded;
     }
 
-    private function checkUrl(string $url, Client $client): array
+    private function checkUrl(string $url, Client $client, bool $verifySsl = true): array
     {
         if ($this->isSkippedUrl($url)) {
             return ['status' => null, 'error' => null, 'skipped' => true];
         }
 
         $requestUrl = $this->encodeUrl($url);
+        $options = ['allow_redirects' => ['max' => 5], 'verify' => $verifySsl];
 
         try {
-            $response = $client->head($requestUrl, [
-                'allow_redirects' => ['max' => 5],
-            ]);
+            $response = $client->head($requestUrl, $options);
             $status = $response->getStatusCode();
 
             if ($status === 405) {
-                $response = $client->get($requestUrl, [
-                    'allow_redirects' => ['max' => 5],
-                ]);
+                $response = $client->get($requestUrl, $options);
                 $status = $response->getStatusCode();
             }
 

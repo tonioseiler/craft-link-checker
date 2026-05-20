@@ -1,6 +1,6 @@
 {
     "name": "furbo/craft-link-checker",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Link checker utility for Craft CMS",
     "type": "craft-plugin",
     "keywords": [

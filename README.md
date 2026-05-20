@@ -61,6 +61,7 @@ All Craft sites are discovered via `Craft::$app->getSites()->getAllSites()`. For
 
 - **Redactor** rich-text fields (Craft 4) — all `<a href>` links in the stored HTML
 - **CKEditor** rich-text fields (Craft 5) — all `<a href>` links in the stored HTML
+- **Link** fields (Craft 5) — the URL value
 - **URL** fields — the raw URL value
 
 **Pass 2 — URL-less section entries**
@@ -73,7 +74,8 @@ Each unique URL is verified once (results cached by URL to avoid duplicate HTTP 
 
 | Link target | How it is verified |
 |---|---|
-| Points to any of the Craft sites | Looked up in a flat set built from a DB query before the passes begin. Returns 200 if the entry exists and is live, 404 otherwise. No HTTP request. |
+| Points to a known live entry on any of the Craft sites | Looked up in a flat set built from a DB query before the passes begin. Returns 200 if the entry exists and is live, 404 otherwise. No HTTP request. |
+| Points to your site but is not a known entry (e.g. a PDF or other asset) | HTTP HEAD request via Guzzle (GET fallback if HEAD returns 405). SSL verification is skipped on non-production environments (`CRAFT_ENVIRONMENT !== 'production'`) to support self-signed certificates on local and staging servers. |
 | External URL, not skipped | HTTP HEAD request via Guzzle (GET fallback if HEAD returns 405). Timeouts: 15 s total, 8 s connect. |
 | Skipped host or path prefix | Ignored entirely. |
 
