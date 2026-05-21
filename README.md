@@ -161,3 +161,5 @@ Only broken/problematic links (3xx, 4xx, 5xx, connection errors) are stored in `
 ## Roadmap
 
 - **Scan disabled entries** — optionally check links in entries that are not live, so broken links can be caught before content is published.
+- **Field exclusions** — allow specific fields to be excluded from link checking via the plugin settings, useful for fields that store URLs not intended to be verified (e.g. map embed links or URLs that consistently block automated requests).
+- **Sprout Redirects** - add extra checks for redirects by Sprout (now the appear as 404s)
